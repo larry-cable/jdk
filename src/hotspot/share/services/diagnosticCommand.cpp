@@ -71,6 +71,7 @@
 #include "utilities/parseInteger.hpp"
 #ifdef LINUX
 #include "os_posix.hpp"
+#include "osContainer_linux.hpp"
 #include "mallocInfoDcmd.hpp"
 #include "trimCHeapDCmd.hpp"
 #include <errno.h>
@@ -168,6 +169,10 @@ void DCmd::register_dcmds(){
 #endif // INCLUDE_CDS
 
   DCmdFactory::register_DCmdFactory(new DCmdFactoryImpl<NMTDCmd>(full_export, true, false));
+
+  // Java Usage Tracking-like "compendium" usage summary...
+
+  DCmdFactory::register_DCmdFactory(new DCmdFactoryImpl<VMUsageMetadataDCmd>(full_export, true, false));
 }
 
 HelpDCmd::HelpDCmd(outputStream* output, bool heap) : DCmdWithParser(output, heap),
@@ -855,6 +860,7 @@ void CodeCacheDCmd::execute(DCmdSource source, TRAPS) {
 PerfMapDCmd::PerfMapDCmd(outputStream* output, bool heap) :
              DCmdWithParser(output, heap),
   _filename("filename", "Name of the map file", "FILE", false, DEFAULT_PERFMAP_FILENAME)
+
 {
   _dcmdparser.add_dcmd_argument(&_filename);
 }
@@ -1208,3 +1214,320 @@ void SystemDumpMapDCmd::execute(DCmdSource source, TRAPS) {
 }
 
 #endif // LINUX
+
+/*
+ * emit a set of usage metadata to describe this invocation of the JVM for audit purposes.
+ */
+
+VMUsageMetadataDCmd::VMUsageMetadataDCmd(outputStream* output, bool heap) : DCmdWithParser(output, heap) ,
+  _fields("fields", "a comma separated list of metadata fields to emit", "STRING", false),
+  _format("format", "Output format (\"text/plain\" or \"application/json\")", "STRING", false, _APPLICATION_JSON),
+  _filepath("filepath", "The file path to the output file", "FILE", false) {
+  _dcmdparser.add_dcmd_option(&_fields);
+  _dcmdparser.add_dcmd_option(&_format);
+  _dcmdparser.add_dcmd_option(&_filepath);
+}
+
+// order of writing o/p...
+const char *const VMUsageMetadataDCmd::_DEFAULT_FMT[] = {
+    _TIMESTAMP,
+    _STARTTIME,
+    _JAVA_HOME,
+    _JAVA_VERSION,
+    _JAVA_VM_VERSION,
+    _SUN_JAVA_LAUNCHER,
+    _FLAGS,
+    _ARGS,
+    _SUN_JAVA_CMD,
+    _CLASSPATH,
+    _MODULE_PATH,
+    _MAIN_MODULE,
+    _MAIN_MODULE_CLASS,
+    _UPGRADE_MODULE_PATH,
+    _PID,
+    _UPTIME,
+#ifdef LINUX
+    _CTR_INFO,
+#endif
+    _USER_NAME,
+    _USER_DIR,
+    _OS_NAME,
+    _OS_VERSION,
+    _OS_ARCH,
+};
+
+//ascending lexical order... bsearch
+VMUsageMetadataDCmd::MapEntry VMUsageMetadataDCmd::_FIELD_WRITER_MAP[] = {
+    { _ARGS,       (void *)&_writeJVMArgs },
+#ifdef LINUX
+    { _CTR_INFO,   (void *)&_writeJVMContainerInfo },
+#endif
+    { _FLAGS,      (void *)&_writeJVMFlags },
+    { _PID,        (void *)&_writeJVMPid },
+    { _STARTTIME,  (void *)&_writeJVMStartTime },
+    { _UPTIME,     (void *)&_writeJVMUptime },
+    { _TIMESTAMP,  (void *)&_writeTime },
+};
+
+static VMUsageMetadataDCmd::JsonFormatter  _JSON_FORMATTER;
+static VMUsageMetadataDCmd::PlainFormatter _PLAIN_FORMATTER;
+
+//ascending lexical order... bsearch
+VMUsageMetadataDCmd::MapEntry VMUsageMetadataDCmd::_FORMATTER_MAP[] = {
+    { _APPLICATION_JSON,  (void *)&_JSON_FORMATTER  },
+    { _TEXT_PLAIN,        (void *)&_PLAIN_FORMATTER },
+};
+
+bool VMUsageMetadataDCmd::_writeField(const Formatter* formatter, outputStream* output, const char *const fieldName, bool needsSeparator, TRAPS) {
+  MapEntry* entry = (MapEntry*)bsearch(&fieldName,
+                                       _FIELD_WRITER_MAP,
+                                       sizeof(_FIELD_WRITER_MAP) / sizeof(MapEntry),
+                                       sizeof(MapEntry),
+                                       &_comparator
+                               );
+
+  return (*(entry == nullptr ? &_writeSystemProperty : (FieldWriter)entry->value))(formatter, output, fieldName, needsSeparator, CHECK_false);
+}
+
+
+bool VMUsageMetadataDCmd::_writeTime(const Formatter* formatter, outputStream* output, const char *const fieldName, bool needsSeparator, TRAPS) {
+  if (needsSeparator) output->print_raw(formatter->fldSeparator());
+
+  output->print("\"%s\"%s", fieldName, formatter->kvSeparator());
+  output->date_stamp(true, "\"", "\"");
+
+  return true;
+}
+
+bool VMUsageMetadataDCmd::_writeJVMPid(const Formatter* formatter, outputStream* output, const char *const fieldName, bool needsSeparator, TRAPS) {
+  if (needsSeparator) output->print_raw(formatter->fldSeparator());
+
+  output->print("\"%s\"%s\"%d\"", fieldName, formatter->kvSeparator(), os::current_process_id());
+  return true;
+}
+
+//YYYY-MM-DDThh:mm:ss.mmm+zzzz.
+bool VMUsageMetadataDCmd::_writeJVMStartTime(const Formatter* formatter, outputStream* output, const char *const fieldName, bool needsSeparator, TRAPS) {
+  char  buf[32];
+  
+  const jlong stms = Management::vm_init_done_time();
+
+  char* st = os::iso8601_time(stms, buf, sizeof(buf) / sizeof(char), true);
+  if (st != nullptr) {
+    if (needsSeparator) output->print_raw(formatter->fldSeparator());
+
+    output->print("\"%s\"%s\"%s\"", fieldName, formatter->kvSeparator(), st);
+    return true;
+  } else
+    return false;
+}
+
+bool VMUsageMetadataDCmd::_writeJVMUptime(const Formatter* formatter, outputStream* output, const char *const fieldName, bool needsSeparator, TRAPS) {
+  if (needsSeparator) output->print_raw(formatter->fldSeparator());
+
+  output->print("\"%s\"%s\"%ld\"", fieldName, formatter->kvSeparator(), Management::ticks_to_ms(os::elapsed_counter()));
+  return true;
+}
+
+bool VMUsageMetadataDCmd::_writeSystemProperty(const Formatter* formatter, outputStream* output, const char *const fieldName, bool needsSeparator, TRAPS) {
+  ResourceMark rm(THREAD);
+  HandleMark hm(THREAD);
+   
+  JavaValue result(T_OBJECT);
+
+  Handle h = java_lang_String::create_from_str(fieldName, CHECK_false);
+
+  JavaCalls::call_static(&result,
+                         vmClasses::System_klass(),
+                         vmSymbols::getProperty_name(),
+                         vmSymbols::string_string_signature(),
+			 h,
+                         THREAD);
+
+  if (HAS_PENDING_EXCEPTION) { // just fail silently to avoid exceptions appearing in the o/p
+    CLEAR_PENDING_EXCEPTION;
+    return false;
+  } 
+
+  // The result should be a String or null...
+  
+  oop res = result.get_oop();
+  assert(java_lang_String::is_instance(), "just checking");
+
+  bool isInstance = java_lang_String::is_instance(res);
+
+  if (isInstance) { //non-null
+    if (needsSeparator) output->print_raw(formatter->fldSeparator());
+    output->print("\"%s\"%s\"", fieldName, formatter->kvSeparator());
+    _writeValueEscapingQuotes(output, java_lang_String::as_utf8_string(res));
+    output->print("\"");
+  }
+
+  return isInstance;
+}
+
+#ifdef LINUX
+// jvm.container.info is (another) pseudo-property that will emit multiple "sub"-properties...
+// .type, cgroup v1 or v2
+// .name, the "hostname" which by convention with (some) container engines is the unique ctr id prefix
+// .memory, the memory limit imposed on the container...
+//
+bool VMUsageMetadataDCmd::_writeJVMContainerInfo(const Formatter* formatter, outputStream* output, const char *const fieldName, bool needsSeparator, TRAPS) {
+  if (!OSContainer::is_containerized()) return false;
+
+  if (needsSeparator) output->print_raw(formatter->fldSeparator());
+  
+  output->print("\"%s.%s\"%s\"%s\"%s", fieldName, "type", formatter->kvSeparator(), OSContainer::container_type(), formatter->fldSeparator());
+
+  char name[HOST_NAME_MAX + 1];
+
+  name[HOST_NAME_MAX] = '\0'; // in case gethostname overflows and does not null terminate ...
+
+  if (OSContainer::hostname(name, HOST_NAME_MAX) >= 0) {
+    output->print("\"%s.%s\"%s\"%s\"%s", fieldName, "name", formatter->kvSeparator(), name, formatter->fldSeparator());
+  }
+  
+  output->print("\"%s.%s\"%s\"%ld\"%s", fieldName, "memory.limit", formatter->kvSeparator(), (long)OSContainer::memory_limit_in_bytes(), formatter->fldSeparator());
+  output->print("\"%s.%s\"%s\"%d\"%s", fieldName, "active.cpus", formatter->kvSeparator(), OSContainer::active_processor_count(), formatter->fldSeparator());
+
+  return true;
+}
+#endif
+
+bool VMUsageMetadataDCmd::_writeJVMFlags(const Formatter* formatter, outputStream* output, const char *const fieldName, bool needsSeparator, TRAPS) {
+  return _writeFieldWithArrayValues(formatter, output, fieldName, Arguments::jvm_flags_array(), Arguments::num_jvm_flags(), needsSeparator);
+}
+
+bool VMUsageMetadataDCmd::_writeJVMArgs(const Formatter* formatter, outputStream* output, const char *const fieldName, bool needsSeparator, TRAPS) {
+  return _writeFieldWithArrayValues(formatter, output, fieldName, Arguments::jvm_args_array(), Arguments::num_jvm_args(), needsSeparator);
+}
+
+bool VMUsageMetadataDCmd::_writeFieldWithArrayValues(const Formatter* formatter, outputStream* output, const char *const fieldName, char** values, int nvalues, bool needsSeparator) {
+  bool hasValues = nvalues > 0 && values != nullptr;
+
+  if (hasValues) {
+    if (needsSeparator) output->print_raw(formatter->fldSeparator());
+   
+    output->print("\"%s\"%s", fieldName, formatter->kvSeparator());
+    formatter->_writeValues(output, values, nvalues);
+  }
+
+  return hasValues;
+}
+
+void VMUsageMetadataDCmd::_writeValueEscapingQuotes(outputStream* output, const char *const value) {
+    for (const char *b = value, *n = b; b != nullptr && *b != '\0';) {
+      bool dq    = false;
+      bool slash = false;
+
+      for (; *n != '\0' && !(dq = (*n == '"')) && !(slash = (*n == '\\')); n++) {} // skip until end or dquote
+
+      if (slash) { n += 2; } // skip the already escaped character...
+
+      output->write(b, n - b); //write everything up to null, dquote or esc...
+
+      if (dq) { //!slash
+        output->print("\\");
+        b = n++;
+      } else {
+        b = n;
+      }
+    }
+}
+
+//void VMUsageMetadataDCmd::Formatter::_writeValues(outputStream* output, char **values, int nvalues) const {}
+
+void VMUsageMetadataDCmd::JsonFormatter::_writeValues(outputStream* output, char **values, int nvalues) const {
+  nvalues -= 1; 
+
+  output->print("[ ");
+  for (int n = 0; n <= nvalues; n++) {
+    output->print("\"");
+    _writeValueEscapingQuotes(output, values[n]);
+    output->print("\"");
+    if (n < nvalues) output->print(", "); // not last ...
+  }
+  output->print(" ]");
+}
+
+void VMUsageMetadataDCmd::PlainFormatter::_writeValues(outputStream* output, char **values, int nvalues) const {
+  nvalues -= 1; 
+
+  output->print("\"");
+  for (int n = 0; n <= nvalues; n++) {
+    output->print("'");
+    _writeValueEscapingQuotes(output, values[n]);
+    output->print("'");
+    if (n < nvalues) output->print(", "); // not last ...
+  }
+  output->print("\"");
+}
+
+void VMUsageMetadataDCmd::execute(DCmdSource source, TRAPS) {
+    stringStream osb(8192), *ostr = &osb;
+    
+    // determine o/p format...
+    
+    const Formatter* formatter = &_JSON_FORMATTER;
+
+    if (_format.has_value()) {
+      char* key = _format.value();
+      MapEntry* entry = (MapEntry*)bsearch(&key,
+                                           _FORMATTER_MAP,
+                                           sizeof(_FORMATTER_MAP) / sizeof(MapEntry),
+                                           sizeof(MapEntry),
+                                           _comparator
+                                   );
+
+      formatter = entry != nullptr ? (Formatter*)(entry->value) : &_JSON_FORMATTER;
+    }
+
+    formatter->prefix(ostr);
+
+    // process "fields" if specified...
+
+    int fCnt = 1;
+
+    bool written = false;
+
+    if (_fields.has_value()) {
+      char *fieldSpec = strdup(_fields.value());
+
+      char *fp = fieldSpec, *fs;
+
+      while ((fs = strsep(&fp, ",")) != nullptr) {
+         written |= formatter->field(ostr, fs, fCnt++ > 1, CHECK);
+      }
+
+      free(fieldSpec);
+    } else { // otherwise default ...
+      for (const char *const field : _DEFAULT_FMT) {
+         written |= formatter->field(ostr, field, fCnt++ > 1, CHECK);
+      }
+    }
+
+    formatter->postfix(ostr);
+
+    if (written) { osb.cr(); } // if we wrote anything terminate the line...
+    
+    const int         sz  = osb.size();
+    const char *const buf = osb.freeze();
+
+    const char *const filepath = _filepath.value();
+
+    if (written && _filepath.has_value()) { // dont write empty lines to file...
+      fileStream fs(_filepath.value(), "a"); // append ...
+
+      if (fs.is_open()) {
+        fs.write(buf, sz);
+        fs.flush();
+        fs.close();
+        output()->print_cr("Ok: VM.usage_metadata (%d bytes) appended to:\"%s\"", sz, filepath);
+      } else {
+        output()->print_cr("Error: failed to open filepath:\"%s\" to append VM.usage_metadata, error: %d (%s).", filepath, errno, os::strerror(errno));
+      }
+    } else {
+      if (written) { output()->write(buf, sz); } else { output()->print("null\n"); }
+    }
+    output()->flush();
+}

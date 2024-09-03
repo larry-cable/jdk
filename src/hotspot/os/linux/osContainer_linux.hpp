@@ -71,10 +71,16 @@ class OSContainer: AllStatic {
 
   static jlong pids_max();
   static jlong pids_current();
+
+  static int hostname(char* hostname, size_t nlen); // by convention the ctr hostname is the unique id prefix
 };
 
 inline bool OSContainer::is_containerized() {
   return _is_containerized;
+}
+
+inline int OSContainer::hostname(char* hostname, size_t nlen) {
+  return ::gethostname(hostname, nlen);
 }
 
 #endif // OS_LINUX_OSCONTAINER_LINUX_HPP
