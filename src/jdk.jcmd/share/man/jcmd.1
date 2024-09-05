@@ -1345,6 +1345,50 @@ The following \f[I]options\f[R] must be specified using either
 (BOOLEAN, false)
 .RE
 .TP
+\f[V]VM.usage_metadata\f[R] [\f[I]options\f[R]]
+Print VM usage metadata as a formatted list of key & (non null) value tuples.
+.RS
+.PP
+Impact: Low
+.PP
+\f[B]Note:\f[R]
+.PP
+The following \f[I]options\f[R] must be specified using either
+\f[I]key\f[R] or \f[I]key\f[R]\f[V]=\f[R]\f[I]value\f[R] syntax.
+.PP
+\f[I]options\f[R]:
+.IP \[bu] 2
+\f[V]format\f[R]: (Optional) Output format (\[dq]plain\[dq] or \[dq]json\[dq]) (STRING, plain)
+.PP
+.IP \[bu] 2
+\f[V]filepath\f[R]: The file path to the output file to append usage metadata to (STRING, no default value)
+.IP \[bu] 2
+\f[V]fields\f[R]: a comma separated list of fields (system properties, real or synthetic) to print (when non-null) (STRING, see below)
+.PP
+Fields are either System Property names(c.f: \f[V]java.lang.System\f[R] for definitions), or certain "synthetic" properties (where there is no pre-existintg System Property):
+.PP
+.IP \[bu] 3
+\f[V]jvm.args\f[R]: any command line arguments specified for the JVM.
+.PP
+.IP \[bu] 3
+\f[V]jvm.container.info\f[R]: (linux only) if the JVM is executing within the context of a cgroup, emit the \f[V]type\f[R], container (host)\f[V]name\f[R], \f[V]memory.limit\f[R] and # of \f[V]active.cpus\f[R] therein.
+.PP
+.IP \[bu] 3
+\f[V]jvm.flags\f[R]: the JVM flags.
+.PP
+.IP \[bu] 3
+\f[V]jvm.pid\f[R]: the process id of the JVM.
+.PP
+.IP \[bu] 3
+\f[V]jvm.starttime\f[R]: the time when the JVM completed its initialization just prior to commencing execution of user code.
+.PP
+.IP \[bu] 3
+\f[V]jvm.uptime.ms\f[R]: the uptime (in ms) of the JVM.
+.PP
+.IP \[bu] 3
+\f[V]timestamp\f[R]: the current time.
+.RE
+.TP
 \f[V]VM.version\f[R]
 Print JVM version information.
 .RS

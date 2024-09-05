@@ -1221,8 +1221,8 @@ void SystemDumpMapDCmd::execute(DCmdSource source, TRAPS) {
 
 VMUsageMetadataDCmd::VMUsageMetadataDCmd(outputStream* output, bool heap) : DCmdWithParser(output, heap) ,
   _fields("fields", "a comma separated list of metadata fields to emit", "STRING", false),
-  _format("format", "Output format (\"text/plain\" or \"application/json\")", "STRING", false, _APPLICATION_JSON),
-  _filepath("filepath", "The file path to the output file", "FILE", false) {
+  _format("format", "Output format (\"plain\" or \"json\")", "STRING", false, _TEXT_PLAIN),
+  _filepath("filepath", "The file path to the output file to append to", "FILE", false) {
   _dcmdparser.add_dcmd_option(&_fields);
   _dcmdparser.add_dcmd_option(&_format);
   _dcmdparser.add_dcmd_option(&_filepath);
@@ -1468,7 +1468,7 @@ void VMUsageMetadataDCmd::execute(DCmdSource source, TRAPS) {
     
     // determine o/p format...
     
-    const Formatter* formatter = &_JSON_FORMATTER;
+    const Formatter* formatter = &_PLAIN_FORMATTER;
 
     if (_format.has_value()) {
       char* key = _format.value();
@@ -1479,7 +1479,7 @@ void VMUsageMetadataDCmd::execute(DCmdSource source, TRAPS) {
                                            _comparator
                                    );
 
-      formatter = entry != nullptr ? (Formatter*)(entry->value) : &_JSON_FORMATTER;
+      formatter = entry != nullptr ? (Formatter*)(entry->value) : &_PLAIN_FORMATTER;
     }
 
     formatter->prefix(ostr);

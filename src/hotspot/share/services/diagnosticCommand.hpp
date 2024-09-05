@@ -1101,8 +1101,8 @@ class VMUsageMetadataDCmd : public DCmdWithParser {
   static constexpr const char *const _OS_ARCH             = "os.arch";
   static constexpr const char *const _SUN_JAVA_LAUNCHER   = "sun.java.launcher";
   
-  static constexpr const char *const _APPLICATION_JSON  = "application/json";
-  static constexpr const char *const _TEXT_PLAIN        = "text/plain"; 
+  static constexpr const char *const _APPLICATION_JSON  = "json";
+  static constexpr const char *const _TEXT_PLAIN        = "plain"; 
 
   static const char *const _DEFAULT_FMT[];
 
