@@ -1027,13 +1027,12 @@ class VMUsageMetadataDCmd : public DCmdWithParser {
 
   VMUsageMetadataDCmd(outputStream* output, bool heap);
   
+  static int         num_arguments() { return 3; }; 
+
   static const char* name() { return "VM.usage_metadata"; }
-  static const char* description() {
-    return "Print VM usage metadata.";
-  }
-  static const char* impact() {
-    return "Low";
-  }
+  static const char* description() { return "Print VM usage metadata."; }
+  static const char* impact() { return "Low"; }
+
   static const JavaPermission permission() {
     JavaPermission p = {"java.util.PropertyPermission", "*", "read"};
     return p;
@@ -1091,11 +1090,12 @@ class VMUsageMetadataDCmd : public DCmdWithParser {
   static constexpr const char *const _CLASSPATH    = "java.class.path";
   
   static constexpr const char *const _MODULE_PATH         = "jdk.module.path";
-  static constexpr const char *const _MAIN_MODULE         = "jdk.main.module";
-  static constexpr const char *const _MAIN_MODULE_CLASS   = "jdk.main.module.class";
-  static constexpr const char *const _UPGRADE_MODULE_PATH = "jdk.upgrade.module.path";
+  static constexpr const char *const _MAIN_MODULE         = "jdk.module.main";
+  static constexpr const char *const _MAIN_MODULE_CLASS   = "jdk.module.main.class";
+  static constexpr const char *const _UPGRADE_MODULE_PATH = "jdk.module.upgrade.path";
   static constexpr const char *const _USER_DIR            = "user.dir";
   static constexpr const char *const _USER_NAME           = "user.name";
+  static constexpr const char *const _OS_HOSTNAME         = "os.hostname";
   static constexpr const char *const _OS_NAME             = "os.name";
   static constexpr const char *const _OS_VERSION          = "os.version";
   static constexpr const char *const _OS_ARCH             = "os.arch";
@@ -1127,6 +1127,8 @@ class VMUsageMetadataDCmd : public DCmdWithParser {
   static bool _writeJVMContainerInfo(const Formatter* formatter, outputStream* output, const char *const propertyName, bool needsSeparator, TRAPS);
 #endif
 
+  static bool _writeHostname(const Formatter* formatter, outputStream* output, const char *const propertyName, bool needsSeparator, TRAPS);
+
   static bool _writeJVMFlags(const Formatter* formatter, outputStream* output, const char *const propertyName, bool needsSeparator, TRAPS);
 
   static bool _writeJVMArgs(const Formatter* formatter, outputStream* output, const char *const propertyName, bool needsSeparator, TRAPS);
@@ -1137,6 +1139,10 @@ class VMUsageMetadataDCmd : public DCmdWithParser {
 
   static int _comparator(const void *x, const void *y) {
     return strcmp(((MapEntry*)x)->key, ((MapEntry*)y)->key);
+  }
+
+  inline static int getHostName(char* name, size_t len) {
+    return gethostname(name, len);
   }
 
   typedef struct { const char *const key; const void *const value; } MapEntry;
