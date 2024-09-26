@@ -1380,10 +1380,6 @@ bool VMUsageMetadataDCmd::_writeJVMContainerInfo(const Formatter* formatter, out
   
   output->print("%s.%s%s\"%s\"%s", fieldName, "type", formatter->kvSeparator(), OSContainer::container_type(), formatter->fldSeparator());
 
-#ifndef HOST_NAME_MAX
-#define MAX_HOST_NAME 256
-#endif 
-
   char name[HOST_NAME_MAX + 1];
 
   name[HOST_NAME_MAX] = '\0'; // in case gethostname overflows and does not null terminate ...
@@ -1399,6 +1395,10 @@ bool VMUsageMetadataDCmd::_writeJVMContainerInfo(const Formatter* formatter, out
 }
 #endif
 
+#ifndef HOST_NAME_MAX
+#define MAX_HOST_NAME 256
+#endif 
+ 
 bool VMUsageMetadataDCmd::_writeHostname(const Formatter* formatter, outputStream* output, const char *const fieldName, bool needsSeparator, TRAPS) {
 
   if (needsSeparator) output->print_raw(formatter->fldSeparator());
@@ -1515,8 +1515,10 @@ void VMUsageMetadataDCmd::execute(DCmdSource source, TRAPS) {
 
       char *fp = fieldSpec, *fs;
 
-      while ((fs = strsep(&fp, ",")) != nullptr) {
+      while ((fs = strtok(fp, ",")) != nullptr) { // windows does not appear to have strsep(3)
          written |= formatter->field(ostr, fs, fCnt++ > 1, CHECK);
+
+	 fp = nullptr; // yuck - as per strtok(3) 
       }
 
       os::free(fieldSpec);
@@ -1530,7 +1532,7 @@ void VMUsageMetadataDCmd::execute(DCmdSource source, TRAPS) {
 
     if (written) { osb.cr(); } // if we wrote anything terminate the line...
     
-    const int         sz  = osb.size();
+    const size_t      sz  = osb.size();
     const char *const buf = osb.freeze();
 
     const char *const filepath = _filepath.value();
@@ -1542,7 +1544,7 @@ void VMUsageMetadataDCmd::execute(DCmdSource source, TRAPS) {
         fs.write(buf, sz);
         fs.flush();
         fs.close();
-        output()->print_cr("Ok: VM.usage_metadata (%d bytes) appended to:\"%s\"", sz, filepath);
+        output()->print_cr("Ok: VM.usage_metadata (%ld bytes) appended to:\"%s\"", sz, filepath);
       } else {
         output()->print_cr("Error: failed to open filepath:\"%s\" to append VM.usage_metadata, error: %d (%s).", filepath, errno, os::strerror(errno));
       }
