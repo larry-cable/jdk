@@ -2023,6 +2023,10 @@ int PlatformMonitor::wait(uint64_t millis) {
 
 char** os::get_environ() { return environ; }
 
+bool os::get_hostname(char *name, int sz) {
+  return gethostname(name, sz) != -1;
+}
+
 // Run the specified command in a separate process. Return its exit value,
 // or -1 on failure (e.g. can't fork a new process).
 // Notes: -Unlike system(), this function can be called from signal handler. It

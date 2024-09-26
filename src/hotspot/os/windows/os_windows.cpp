@@ -268,6 +268,10 @@ static BOOL unmapViewOfFile(LPCVOID lpBaseAddress) {
 
 char** os::get_environ() { return _environ; }
 
+bool os::get_hostname(char *name, int sz) {
+  return gethostname(name, len) == 0;
+}
+
 // No setuid programs under Windows.
 bool os::have_special_privileges() {
   return false;

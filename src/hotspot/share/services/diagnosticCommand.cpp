@@ -1327,7 +1327,7 @@ bool VMUsageMetadataDCmd::_writeJVMStartTime(const Formatter* formatter, outputS
 bool VMUsageMetadataDCmd::_writeJVMUptime(const Formatter* formatter, outputStream* output, const char *const fieldName, bool needsSeparator, TRAPS) {
   if (needsSeparator) output->print_raw(formatter->fldSeparator());
 
-  output->print("%s%s%ld", fieldName, formatter->kvSeparator(), Management::ticks_to_ms(os::elapsed_counter()));
+  output->print("%s%s%ld", fieldName, formatter->kvSeparator(), (long)Management::ticks_to_ms(os::elapsed_counter()));
   return true;
 }
 
@@ -1381,11 +1381,15 @@ bool VMUsageMetadataDCmd::_writeJVMContainerInfo(const Formatter* formatter, out
   
   output->print("%s.%s%s\"%s\"%s", fieldName, "type", formatter->kvSeparator(), OSContainer::container_type(), formatter->fldSeparator());
 
+#ifndef HOST_NAME_MAX
+#define MAX_HOST_NAME 256
+#endif 
+
   char name[HOST_NAME_MAX + 1];
 
   name[HOST_NAME_MAX] = '\0'; // in case gethostname overflows and does not null terminate ...
 
-  if (getHostName(name, HOST_NAME_MAX) >= 0) {
+  if (os::get_hostname(name, HOST_NAME_MAX)) {
     output->print("%s.%s%s\"%s\"%s", fieldName, "name", formatter->kvSeparator(), name, formatter->fldSeparator());
   }
   
@@ -1404,7 +1408,7 @@ bool VMUsageMetadataDCmd::_writeHostname(const Formatter* formatter, outputStrea
 
   name[HOST_NAME_MAX] = '\0'; // in case gethostname overflows and does not null terminate ...
 
-  const bool hasName = (getHostName(name, HOST_NAME_MAX) >= 0);
+  const bool hasName = os::get_hostname(name, HOST_NAME_MAX);
 
   if (hasName) {
     output->print("%s%s\"%s\"", fieldName, formatter->kvSeparator(), name);
@@ -1508,7 +1512,7 @@ void VMUsageMetadataDCmd::execute(DCmdSource source, TRAPS) {
     bool written = false;
 
     if (_fields.has_value()) {
-      char *fieldSpec = strdup(_fields.value());
+      char *fieldSpec = os::strdup(_fields.value());
 
       char *fp = fieldSpec, *fs;
 
@@ -1516,7 +1520,7 @@ void VMUsageMetadataDCmd::execute(DCmdSource source, TRAPS) {
          written |= formatter->field(ostr, fs, fCnt++ > 1, CHECK);
       }
 
-      free(fieldSpec);
+      os::free(fieldSpec);
     } else { // otherwise default ...
       for (const char *const field : _DEFAULT_FMT) {
          written |= formatter->field(ostr, field, fCnt++ > 1, CHECK);

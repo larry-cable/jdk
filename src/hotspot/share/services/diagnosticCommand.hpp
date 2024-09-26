@@ -1141,10 +1141,6 @@ class VMUsageMetadataDCmd : public DCmdWithParser {
     return strcmp(((MapEntry*)x)->key, ((MapEntry*)y)->key);
   }
 
-  inline static int getHostName(char* name, size_t len) {
-    return gethostname(name, len);
-  }
-
   typedef struct { const char *const key; const void *const value; } MapEntry;
 
   static MapEntry _FORMATTER_MAP[];

@@ -270,6 +270,8 @@ class os: AllStatic {
   // Get environ pointer, platform independently
   static char** get_environ();
 
+  static bool   get_hostname(char *name, int sz);
+
   static bool have_special_privileges();
 
   static jlong  javaTimeMillis();
