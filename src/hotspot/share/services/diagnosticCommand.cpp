@@ -1483,6 +1483,8 @@ void VMUsageMetadataDCmd::PlainFormatter::_writeValues(outputStream* output, cha
   output->print("\"");
 }
 
+static const char *const _COMMA_SEP = ",";
+
 void VMUsageMetadataDCmd::execute(DCmdSource source, TRAPS) {
     stringStream osb(8192), *ostr = &osb;
     
@@ -1511,14 +1513,10 @@ void VMUsageMetadataDCmd::execute(DCmdSource source, TRAPS) {
     bool written = false;
 
     if (_fields.has_value()) {
-      char *fieldSpec = os::strdup(_fields.value());
+      char *sav, *fieldSpec = os::strdup(_fields.value());
 
-      char *fp = fieldSpec, *fs;
-
-      while ((fs = strtok(fp, ",")) != nullptr) { // windows does not appear to have strsep(3)
+      for (char* fs = strtok_r(fieldSpec, _COMMA_SEP, &sav); fs != nullptr; fs = strtok_r(nullptr, _COMMA_SEP, &sav)) {
          written |= formatter->field(ostr, fs, fCnt++ > 1, CHECK);
-
-	 fp = nullptr; // yuck - as per strtok(3) 
       }
 
       os::free(fieldSpec);
