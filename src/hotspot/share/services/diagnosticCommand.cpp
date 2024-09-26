@@ -1353,12 +1353,11 @@ bool VMUsageMetadataDCmd::_writeSystemProperty(const Formatter* formatter, outpu
 
   // The result should be a String or null...
   
-  oop res = result.get_oop();
-  assert(java_lang_String::is_instance(), "just checking");
+  const oop res = result.get_oop();
 
-  bool isInstance = java_lang_String::is_instance(res);
+  const bool isInstance = (res != nullptr && java_lang_String::is_instance(res));
 
-  if (isInstance) { //non-null
+  if (isInstance) { 
     if (needsSeparator) output->print_raw(formatter->fldSeparator());
     output->print("%s%s\"", fieldName, formatter->kvSeparator());
     _writeValueEscapingQuotes(output, java_lang_String::as_utf8_string(res));
