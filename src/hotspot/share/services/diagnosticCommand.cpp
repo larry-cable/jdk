@@ -1395,8 +1395,8 @@ bool VMUsageMetadataDCmd::_writeJVMContainerInfo(const Formatter* formatter, out
 }
 #endif
 
-#ifndef HOST_NAME_MAX
-#define MAX_HOST_NAME 256
+#ifndef HOST_NAME_MAX // anywhere else but LINUX...
+#define HOST_NAME_MAX 256
 #endif 
  
 bool VMUsageMetadataDCmd::_writeHostname(const Formatter* formatter, outputStream* output, const char *const fieldName, bool needsSeparator, TRAPS) {
@@ -1542,7 +1542,7 @@ void VMUsageMetadataDCmd::execute(DCmdSource source, TRAPS) {
         fs.write(buf, sz);
         fs.flush();
         fs.close();
-        output()->print_cr("Ok: VM.usage_metadata (%ld bytes) appended to:\"%s\"", sz, filepath);
+        output()->print_cr("Ok: VM.usage_metadata (%ld bytes) appended to:\"%s\"", (long)sz, filepath);
       } else {
         output()->print_cr("Error: failed to open filepath:\"%s\" to append VM.usage_metadata, error: %d (%s).", filepath, errno, os::strerror(errno));
       }
