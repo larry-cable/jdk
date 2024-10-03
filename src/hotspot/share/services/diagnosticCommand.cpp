@@ -1228,26 +1228,26 @@ VMUsageMetadataDCmd::VMUsageMetadataDCmd(outputStream* output, bool heap) : DCmd
   _dcmdparser.add_dcmd_option(&_filepath);
 }
 
-// order of writing o/p...
+// default order of writing o/p keys&values...
 const char *const VMUsageMetadataDCmd::_DEFAULT_FMT[] = {
     _TIMESTAMP,
-    _STARTTIME,
+    _JVM_STARTTIME,
     _JAVA_HOME,
     _JAVA_VERSION,
     _JAVA_VM_VERSION,
     _SUN_JAVA_LAUNCHER,
-    _FLAGS,
-    _ARGS,
+    _JVM_FLAGS,
+    _JVM_ARGS,
     _SUN_JAVA_CMD,
-    _CLASSPATH,
-    _MODULE_PATH,
-    _MAIN_MODULE,
-    _MAIN_MODULE_CLASS,
-    _UPGRADE_MODULE_PATH,
-    _PID,
-    _UPTIME,
+    _JAVA_CLASSPATH,
+    _JDK_MODULE_PATH,
+    _JDK_MAIN_MODULE,
+    _JDK_MAIN_MODULE_CLASS,
+    _JDK_UPGRADE_MODULE_PATH,
+    _JVM_PID,
+    _JVM_UPTIME,
 #ifdef LINUX
-    _CTR_INFO,
+    _JVM_CTR_INFO,
 #endif
     _USER_NAME,
     _USER_DIR,
@@ -1259,16 +1259,16 @@ const char *const VMUsageMetadataDCmd::_DEFAULT_FMT[] = {
 
 //ascending lexical order... bsearch
 VMUsageMetadataDCmd::MapEntry VMUsageMetadataDCmd::_FIELD_WRITER_MAP[] = {
-    { _ARGS,       (void *)&_writeJVMArgs },
+    { _JVM_ARGS,       (void *)&_writeJVMArgs },
 #ifdef LINUX
-    { _CTR_INFO,   (void *)&_writeJVMContainerInfo },
+    { _JVM_CTR_INFO,   (void *)&_writeJVMContainerInfo },
 #endif
-    { _FLAGS,      (void *)&_writeJVMFlags },
-    { _PID,        (void *)&_writeJVMPid },
-    { _STARTTIME,  (void *)&_writeJVMStartTime },
-    { _UPTIME,     (void *)&_writeJVMUptime },
-    { _OS_HOSTNAME,(void *)&_writeHostname },
-    { _TIMESTAMP,  (void *)&_writeTime },
+    { _JVM_FLAGS,      (void *)&_writeJVMFlags },
+    { _JVM_PID,        (void *)&_writeJVMPid },
+    { _JVM_STARTTIME,  (void *)&_writeJVMStartTime },
+    { _JVM_UPTIME,     (void *)&_writeJVMUptime },
+    { _OS_HOSTNAME,    (void *)&_writeHostname },
+    { _TIMESTAMP,      (void *)&_writeTime },
 };
 
 static VMUsageMetadataDCmd::JsonFormatter  _JSON_FORMATTER;

@@ -1074,32 +1074,37 @@ class VMUsageMetadataDCmd : public DCmdWithParser {
 
   private:
 
-  static constexpr const char *const _TIMESTAMP       = "timestamp";
-  static constexpr const char *const _STARTTIME       = "jvm.starttime";
+  static constexpr const char *const _JAVA_CLASSPATH  = "java.class.path";
   static constexpr const char *const _JAVA_HOME       = "java.home";
   static constexpr const char *const _JAVA_VERSION    = "java.version";
   static constexpr const char *const _JAVA_VM_VERSION = "java.vm.version";
-  static constexpr const char *const _SUN_JAVA_CMD    = "sun.java.command";
-  static constexpr const char *const _ARGS            = "jvm.args";
+
+  static constexpr const char *const _JDK_MODULE_PATH         = "jdk.module.path";
+  static constexpr const char *const _JDK_MAIN_MODULE         = "jdk.module.main";
+  static constexpr const char *const _JDK_MAIN_MODULE_CLASS   = "jdk.module.main.class";
+  static constexpr const char *const _JDK_UPGRADE_MODULE_PATH = "jdk.module.upgrade.path";
+
+  static constexpr const char *const _JVM_ARGS        = "jvm.args";
 #ifdef LINUX
-  static constexpr const char *const _CTR_INFO     = "jvm.container.info";
+  static constexpr const char *const _JVM_CTR_INFO    = "jvm.container.info";
 #endif
-  static constexpr const char *const _FLAGS        = "jvm.flags";
-  static constexpr const char *const _PID          = "jvm.pid";
-  static constexpr const char *const _UPTIME       = "jvm.uptime.ms";
-  static constexpr const char *const _CLASSPATH    = "java.class.path";
+  static constexpr const char *const _JVM_FLAGS       = "jvm.flags";
+  static constexpr const char *const _JVM_PID         = "jvm.pid";
+  static constexpr const char *const _JVM_STARTTIME   = "jvm.starttime";
+  static constexpr const char *const _JVM_UPTIME      = "jvm.uptime.ms";
   
-  static constexpr const char *const _MODULE_PATH         = "jdk.module.path";
-  static constexpr const char *const _MAIN_MODULE         = "jdk.module.main";
-  static constexpr const char *const _MAIN_MODULE_CLASS   = "jdk.module.main.class";
-  static constexpr const char *const _UPGRADE_MODULE_PATH = "jdk.module.upgrade.path";
+  static constexpr const char *const _SUN_JAVA_LAUNCHER   = "sun.java.launcher";
+  static constexpr const char *const _SUN_JAVA_CMD        = "sun.java.command";
+
+  static constexpr const char *const _TIMESTAMP           = "timestamp";
+
   static constexpr const char *const _USER_DIR            = "user.dir";
   static constexpr const char *const _USER_NAME           = "user.name";
+
+  static constexpr const char *const _OS_ARCH             = "os.arch";
   static constexpr const char *const _OS_HOSTNAME         = "os.hostname";
   static constexpr const char *const _OS_NAME             = "os.name";
   static constexpr const char *const _OS_VERSION          = "os.version";
-  static constexpr const char *const _OS_ARCH             = "os.arch";
-  static constexpr const char *const _SUN_JAVA_LAUNCHER   = "sun.java.launcher";
   
   static constexpr const char *const _APPLICATION_JSON  = "json";
   static constexpr const char *const _TEXT_PLAIN        = "plain"; 
